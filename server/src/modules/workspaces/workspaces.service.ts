@@ -487,8 +487,7 @@ export class WorkspacesService {
       where: { id: proposalId, workspaceId, deletedAt: null }
     });
     if (!run) throw new NotFoundException("Review proposal not found");
-    if (run.status === "merged") throw new BadRequestException("Review proposal has already been approved");
-    if (run.status === "cancelled" || run.status === "stale") throw new BadRequestException("Review proposal is no longer active");
+    assertWaitingReviewStatus(run.status);
     const codeRoot = await this.resolveFilePath(workspace.rootPath, WORKSPACE_CODE_DIR, true);
     await this.ensureCleanGitReady(codeRoot);
     const git = await this.readGitSummary(codeRoot);
@@ -529,7 +528,7 @@ export class WorkspacesService {
       where: { id: proposalId, workspaceId, deletedAt: null }
     });
     if (!run) throw new NotFoundException("Review proposal not found");
-    if (run.status === "merged") throw new BadRequestException("Review proposal has already been approved");
+    assertWaitingReviewStatus(run.status);
     await this.prisma.codeTaskRun.update({
       where: { id: run.id },
       data: {
@@ -2378,8 +2377,7 @@ export class WorkspacesService {
     const proposal = asRecord(metadata.proposal);
     if (!proposal) throw new BadRequestException("This diff asset is not a review proposal");
     const status = normalizeOptionalString(proposal.status) ?? "waiting_review";
-    if (status === "approved") throw new BadRequestException("Review proposal has already been approved");
-    if (status === "cancelled") throw new BadRequestException("Review proposal has been cancelled");
+    assertWaitingReviewStatus(status);
     return {
       workspace,
       asset,
@@ -3570,6 +3568,13 @@ async function readFileHeader(path: string, length: number) {
 
 function hasMagic(header: Buffer, bytes: number[]) {
   return header.length >= bytes.length && bytes.every((byte, index) => header[index] === byte);
+}
+
+function assertWaitingReviewStatus(status: string) {
+  if (status === "waiting_review") return;
+  if (status === "approved" || status === "merged") throw new BadRequestException("Review proposal has already been approved");
+  if (status === "cancelled" || status === "stale") throw new BadRequestException("Review proposal is no longer active");
+  throw new BadRequestException("Review proposal is not waiting for review");
 }
 
 function validateUploadSize(size: number, maxBytes: number) {

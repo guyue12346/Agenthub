@@ -1373,7 +1373,7 @@ function ProposalCard({
   busy: boolean;
 }) {
   const diffUrl = proposal.diffAssetId ? api.assetContentUrl(workspaceId, proposal.diffAssetId) : "";
-  const canReview = proposal.status === "waiting_review" || proposal.status === "completed" || proposal.status === "revision_requested";
+  const canReview = proposal.status === "waiting_review";
   const canApprove = canReview && (!proposal.isFromCurrentUser || proposal.autoApproved);
   return (
     <article className={`workspace-proposal-card ${proposal.isFromCurrentUser ? "mine" : ""}`}>
