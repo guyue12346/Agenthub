@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS "KnowledgeDocument_knowledgeAssetId_sourceAssetVersion_key";

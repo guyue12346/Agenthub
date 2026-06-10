@@ -1,0 +1,58 @@
+{
+  "name": "@agenthub/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "AGENTHUB_WEB_URL=http://127.0.0.1:5173 electron .",
+    "start": "electron .",
+    "dist:mac": "npx electron-builder --mac --publish=never",
+    "dist:dir": "npx electron-builder --dir",
+    "pack": "npx electron-builder --dir --publish=never"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "electron": "36.4.0",
+    "electron-builder": "26.15.2"
+  },
+  "build": {
+    "appId": "com.agenthub.desktop",
+    "productName": "AgentHub",
+    "copyright": "AgentHub",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron",
+      "assets",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web/dist"
+      }
+    ],
+    "mac": {
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "agenthub-desktop-macos-${version}.${ext}"
+    },
+    "protocols": [
+      {
+        "name": "agenthub",
+        "schemes": ["agenthub"]
+      }
+    ],
+    "publish": {
+      "provider": "generic",
+      "url": ""
+    }
+  }
+}

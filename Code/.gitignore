@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+output/
+tmp/
+.env
+.DS_Store
+.android-sdk/
+.downloads/
+.gradle/
+.gradle-bin/
+mobile/app/build/
+workspaces/*
+!workspaces/.gitkeep
+
+# Historical prototype folders are not part of the formal first-version app.
+demo/**/node_modules/
+demo/**/dist/
+demo/**/coverage/
+demo/**/logs*.sqlite
+demo/**/state*.sqlite
+demo/**/auth.json

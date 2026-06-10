@@ -1,0 +1,8 @@
+<resources>
+    <color name="agenthub_bg">#F7F9FC</color>
+    <color name="agenthub_surface">#FFFFFF</color>
+    <color name="agenthub_text">#111827</color>
+    <color name="agenthub_muted">#667085</color>
+    <color name="agenthub_primary">#3B82F6</color>
+    <color name="agenthub_error">#DC2626</color>
+</resources>

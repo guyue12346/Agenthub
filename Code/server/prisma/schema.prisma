@@ -1,0 +1,1123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  owner
+  member
+}
+
+enum SessionKind {
+  user
+  admin
+}
+
+enum SessionClientType {
+  web
+  app
+  desktop
+}
+
+enum FriendStatus {
+  pending
+  accepted
+  blocked
+}
+
+enum TeamRole {
+  owner
+  member
+}
+
+enum ConversationType {
+  direct
+  agent_direct
+  project
+}
+
+enum ConversationMemberType {
+  user
+  agent
+  system
+}
+
+enum ConversationMemberRole {
+  owner
+  member
+  orchestrator
+  code
+  product
+  ui
+  review
+  universal
+}
+
+enum MessageSenderType {
+  user
+  agent
+  system
+}
+
+enum MessageStatus {
+  sent
+  processing
+  failed
+}
+
+enum MessageActionActorType {
+  user
+  agent
+  system
+}
+
+enum MessageActionType {
+  like
+  pin
+  comment
+  reply
+  quote
+}
+
+enum WorkspaceAssetKind {
+  file
+  image
+  web
+  diff
+  log
+  doc
+}
+
+enum AgentType {
+  orchestrator
+  universal
+  product
+  ui
+  review
+  code
+}
+
+enum AgentProvider {
+  internal
+  codex
+  opencode
+}
+
+enum AgentVisibility {
+  private
+  team
+  public
+}
+
+enum AgentStatus {
+  available
+  running
+  missing_config
+  unavailable
+}
+
+enum OrchestratorRunStatus {
+  queued
+  running
+  waiting_user
+  waiting_agent
+  waiting_tool
+  completed
+  failed
+  cancelled
+}
+
+enum OrchestratorNode {
+  wake
+  understand
+  ui_query
+  tools
+  decompose
+  assignment
+  validate
+  integrate
+  summary
+  memory_manage
+}
+
+enum AgentRunStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+  needs_clarification
+}
+
+enum CodeTaskRunStatus {
+  queued
+  running
+  cancelling
+  waiting_review
+  revision_requested
+  merged
+  completed
+  failed
+  timed_out
+  cancelled
+  stale
+}
+
+enum ToolCallerType {
+  orchestrator
+  agent
+  user
+  system
+}
+
+enum ToolRunStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum RuntimeScopeKind {
+  conversation
+  user
+  workspace
+  run
+  agent_run
+}
+
+enum AgentMemoryScope {
+  personal_cross_conversation
+  personal_direct
+  conversation
+}
+
+enum SystemLogLevel {
+  debug
+  info
+  warn
+  error
+}
+
+enum LlmCallStatus {
+  started
+  completed
+  failed
+}
+
+model User {
+  id           String   @id @default(cuid())
+  publicId     String   @unique @default(cuid())
+  name         String
+  email        String   @unique
+  avatar       String?
+  role         UserRole @default(member)
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  sessions      Session[]
+  teamMembers   TeamMember[]
+  messages      Message[]
+  auditLogs     AuditLog[]
+}
+
+model FriendConnection {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendStatus
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+}
+
+model Session {
+  id         String            @id @default(cuid())
+  userId     String
+  tokenHash  String            @unique
+  kind       SessionKind       @default(user)
+  clientType SessionClientType @default(web)
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  deletedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, kind, clientType])
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  members TeamMember[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  type        ConversationType
+  title       String
+  avatar      String?
+  workspaceId String?
+  codeAgentId String?
+  lastMessage String   @default("")
+  unreadCount Int      @default(0)
+  memberCount Int      @default(1)
+  messageSeq  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  members ConversationMember[]
+  messages Message[]
+  workspace Workspace?
+  memories ConversationMemory[]
+  runs OrchestratorRun[]
+  deployments Deployment[]
+
+  @@index([updatedAt])
+  @@index([workspaceId])
+}
+
+model ConversationMember {
+  id             String   @id @default(cuid())
+  conversationId String
+  memberType     ConversationMemberType
+  memberId       String
+  role           ConversationMemberRole
+  unreadCount    Int      @default(0)
+  lastReadSeq    Int      @default(0)
+  pinnedAt       DateTime?
+  archivedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+  @@index([memberType, memberId])
+  @@index([memberType, memberId, archivedAt])
+  @@index([memberType, memberId, pinnedAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderType     MessageSenderType
+  senderId       String
+  senderName     String
+  senderAvatar   String
+  senderSubtitle String?
+  status         MessageStatus @default(sent)
+  blocks         Json
+  mentions       Json?
+  metadata       Json?
+  seq            Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+  userId         String?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  actions MessageAction[]
+
+  @@unique([conversationId, seq])
+  @@index([conversationId, createdAt])
+}
+
+model MessageAction {
+  id        String   @id @default(cuid())
+  messageId String
+  actorType MessageActionActorType
+  actorId   String
+  type      MessageActionType
+  payload   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  message Message @relation(fields: [messageId], references: [id])
+
+  @@index([messageId, type])
+}
+
+model Workspace {
+  id             String   @id @default(cuid())
+  conversationId String   @unique
+  name           String
+  rootPath       String
+  gitRepoPath    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  assets         WorkspaceAsset[]
+  uploadSessions WorkspaceUploadSession[]
+  codeTaskRuns   CodeTaskRun[]
+  fileLocks      WorkspaceFileLock[]
+  deployments    Deployment[]
+}
+
+model Deployment {
+  id                String   @id
+  workspaceId       String
+  conversationId    String
+  codeTaskRunId     String?
+  triggerMessageId  String?
+  statusMessageId   String?
+  requestedByUserId String
+  target            String
+  status            String
+  sourceRef         Json
+  profile           Json?
+  buildCommand      String?
+  outputPath        String?
+  previewUrl        String?
+  logAssetId        String?
+  artifactAssetId   String?
+  port              Int?
+  pid               Int?
+  startedAt         DateTime?
+  readyAt           DateTime?
+  stoppedAt         DateTime?
+  error             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([workspaceId, status])
+  @@index([conversationId, createdAt])
+  @@index([requestedByUserId, createdAt])
+}
+
+model WorkspaceAsset {
+  id          String   @id @default(cuid())
+  workspaceId String
+  kind        WorkspaceAssetKind
+  name        String
+  path        String
+  mimeType    String?
+  size        Int?
+  summary     String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  versions  WorkspaceAssetVersion[]
+
+  @@index([workspaceId, kind])
+}
+
+model WorkspaceAssetVersion {
+  id              String   @id @default(cuid())
+  assetId         String
+  version         Int
+  path            String
+  size            Int
+  checksumSha256  String
+  createdByUserId String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  asset WorkspaceAsset @relation(fields: [assetId], references: [id])
+
+  @@unique([assetId, version])
+  @@index([assetId, createdAt])
+}
+
+model WorkspaceFileLock {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  path           String
+  lockedByUserId String
+  token          String   @unique
+  expiresAt      DateTime
+  releasedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, path])
+  @@index([workspaceId, expiresAt])
+  @@index([lockedByUserId])
+}
+
+model WorkspaceUploadSession {
+  id              String   @id
+  workspaceId     String
+  createdByUserId String
+  name            String
+  mimeType        String
+  size            Int
+  receivedBytes   Int      @default(0)
+  storagePath     String
+  status          String
+  assetId         String?
+  expiresAt       DateTime
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId, status])
+  @@index([expiresAt])
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  avatar      String?
+  type        AgentType
+  provider    AgentProvider?
+  description String
+  capabilities Json
+  visibility  AgentVisibility
+  status      AgentStatus
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  versions AgentVersion[]
+  installations AgentInstallation[]
+  conversations AgentConversation[]
+  runs AgentRun[]
+  componentBindings AgentComponentBinding[]
+}
+
+model AgentVersion {
+  id        String   @id @default(cuid())
+  agentId   String
+  version   String
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  agent Agent @relation(fields: [agentId], references: [id])
+  componentBindings AgentComponentBinding[]
+}
+
+model AgentComponentBinding {
+  id               String   @id @default(cuid())
+  agentId          String
+  agentVersionId   String?
+  componentKind    String
+  componentAssetId String
+  source           String
+  versionPolicy    String
+  enabled          Boolean  @default(true)
+  order            Int
+  config           Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  agent        Agent         @relation(fields: [agentId], references: [id])
+  agentVersion AgentVersion? @relation(fields: [agentVersionId], references: [id])
+
+  @@unique([agentVersionId, componentKind, componentAssetId])
+  @@index([agentId, componentKind])
+  @@index([componentKind, componentAssetId])
+  @@index([agentVersionId])
+}
+
+model AgentInstallation {
+  id        String   @id @default(cuid())
+  agentId   String
+  ownerType String
+  ownerId   String
+  config    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, ownerType, ownerId])
+  @@index([ownerType, ownerId])
+}
+
+model HubSubscription {
+  id                String   @id @default(cuid())
+  kind              String
+  assetId           String
+  ownerType         String
+  ownerId           String
+  sourceVersion     Int
+  sourceFingerprint String
+  installedVersion  Int
+  status            String
+  updateAvailable   Boolean  @default(false)
+  conflictStatus    String?
+  forkedAssetId     String?
+  config            Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  @@unique([kind, assetId, ownerType, ownerId])
+  @@index([ownerType, ownerId])
+  @@index([kind, assetId])
+}
+
+model HubAssetLike {
+  id        String   @id @default(cuid())
+  kind      String
+  assetId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([kind, assetId, userId])
+  @@index([kind, assetId])
+  @@index([userId])
+}
+
+model ToolDefinition {
+  id                    String   @id
+  category              String
+  name                  String
+  risk                  String
+  description           String
+  runtimeType           String
+  source                String   @default("builtin")
+  visibility            String   @default("public")
+  ownerType             String   @default("system")
+  ownerId               String?
+  runtimeToolId         String?
+  metadata              Json?
+  executable            Boolean  @default(false)
+  inputSchema           Json
+  outputSchema          Json?
+  permissionScopes      Json
+  requiresApproval      Boolean  @default(false)
+  availableToAgentTypes Json
+  timeoutPolicy         String
+  auditLevel            String
+  currentVersion        Int      @default(1)
+  currentFingerprint    String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
+
+  versions ToolVersion[]
+
+  @@index([category, risk])
+  @@index([visibility, deletedAt])
+  @@index([ownerType, ownerId])
+}
+
+model ToolVersion {
+  id          String   @id @default(cuid())
+  toolId      String
+  version     Int
+  definition  Json
+  fingerprint String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tool ToolDefinition @relation(fields: [toolId], references: [id])
+
+  @@unique([toolId, version])
+  @@index([toolId, createdAt])
+}
+
+model SkillAsset {
+  id                 String   @id @default(cuid())
+  sourceAssetId      String   @unique
+  ownerType          String
+  ownerId            String
+  name               String
+  description        String
+  visibility         String   @default("private")
+  triggerSyntax      Json?
+  injectionMode      String   @default("agent_decides")
+  targetAgentTypes   Json
+  requiredTools      Json
+  outputRules        Json?
+  safetyRules        Json?
+  currentVersion     Int      @default(1)
+  releaseVersion     String   @default("v0.0.1")
+  currentFingerprint String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  versions SkillVersion[]
+
+  @@index([ownerType, ownerId])
+  @@index([visibility, deletedAt])
+}
+
+model SkillVersion {
+  id                 String   @id @default(cuid())
+  skillAssetId       String
+  version            Int
+  releaseVersion     String   @default("v0.0.1")
+  sourceAssetId      String
+  sourceAssetVersion Int
+  spec               Json
+  fingerprint        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  skill SkillAsset @relation(fields: [skillAssetId], references: [id])
+
+  @@unique([skillAssetId, version])
+  @@index([sourceAssetId])
+}
+
+model KnowledgeAsset {
+  id                 String   @id @default(cuid())
+  sourceAssetId      String   @unique
+  ownerType          String
+  ownerId            String
+  name               String
+  description        String
+  visibility         String   @default("private")
+  sourceType         String
+  accessScope        String
+  summary            String
+  indexStatus        String
+  fileCount          Int?
+  currentVersion     Int      @default(1)
+  currentFingerprint String
+  preset             String   @default("standard")
+  metadata           Json?
+  forkedFromId       String?
+  lineageRootId      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  versions      KnowledgeVersion[]
+  documents     KnowledgeDocument[]
+  chunks        KnowledgeChunk[]
+  retrievalLogs KnowledgeRetrievalLog[]
+  subscriptions KnowledgeSubscription[]
+  forkedFrom    KnowledgeAsset?  @relation("KnowledgeFork", fields: [forkedFromId], references: [id])
+  forks         KnowledgeAsset[] @relation("KnowledgeFork")
+
+  @@index([ownerType, ownerId])
+  @@index([visibility, deletedAt])
+  @@index([forkedFromId])
+}
+
+model KnowledgeSubscription {
+  id               String   @id @default(cuid())
+  knowledgeAssetId String
+  ownerType        String
+  ownerId          String
+  updatePolicy     String   @default("notify")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  knowledge KnowledgeAsset @relation(fields: [knowledgeAssetId], references: [id])
+
+  @@unique([knowledgeAssetId, ownerType, ownerId])
+  @@index([ownerType, ownerId])
+}
+
+model KnowledgeVersion {
+  id                   String   @id @default(cuid())
+  knowledgeAssetId      String
+  version               Int
+  sourceAssetId         String
+  sourceAssetVersion    Int
+  spec                  Json
+  fingerprint           String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
+
+  knowledge KnowledgeAsset @relation(fields: [knowledgeAssetId], references: [id])
+
+  @@unique([knowledgeAssetId, version])
+  @@index([sourceAssetId])
+}
+
+model KnowledgeDocument {
+  id                 String   @id @default(cuid())
+  knowledgeAssetId   String
+  sourceAssetId      String
+  sourceAssetVersion Int
+  workspaceId        String
+  path               String
+  title              String
+  mimeType           String?
+  checksumSha256     String?
+  metadata           Json?
+  indexedAt          DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  knowledge KnowledgeAsset     @relation(fields: [knowledgeAssetId], references: [id])
+  chunks    KnowledgeChunk[]
+  retrievalLogs KnowledgeRetrievalLog[]
+
+  @@unique([knowledgeAssetId, sourceAssetId, sourceAssetVersion])
+  @@index([sourceAssetId])
+  @@index([workspaceId, path])
+}
+
+model KnowledgeChunk {
+  id               String   @id @default(cuid())
+  knowledgeAssetId String
+  documentId       String
+  chunkIndex       Int
+  content          String
+  tokenEstimate    Int
+  keywords         Json
+  embedding        Float[]  @default([])
+  embeddingModel   String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  knowledge KnowledgeAsset   @relation(fields: [knowledgeAssetId], references: [id])
+  document  KnowledgeDocument @relation(fields: [documentId], references: [id])
+  retrievalLogs KnowledgeRetrievalLog[]
+
+  @@unique([documentId, chunkIndex])
+  @@index([knowledgeAssetId, deletedAt])
+}
+
+model KnowledgeRetrievalLog {
+  id               String   @id @default(cuid())
+  knowledgeAssetId String
+  documentId       String?
+  chunkId          String?
+  conversationId   String?
+  runId            String?
+  callerType       String
+  callerId         String
+  query            String
+  score            Float
+  sourceVersion    Int
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  deletedAt        DateTime?
+
+  knowledge KnowledgeAsset    @relation(fields: [knowledgeAssetId], references: [id])
+  document  KnowledgeDocument? @relation(fields: [documentId], references: [id])
+  chunk     KnowledgeChunk?    @relation(fields: [chunkId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([knowledgeAssetId, createdAt])
+}
+
+model AgentConversation {
+  id             String   @id @default(cuid())
+  agentId         String
+  conversationId  String
+  providerSession Json?
+  memory          Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([conversationId, agentId])
+  @@index([conversationId, agentId])
+}
+
+model OrchestratorRun {
+  id             String   @id @default(cuid())
+  conversationId String
+  status         OrchestratorRunStatus
+  currentNode    OrchestratorNode
+  workingMemory  Json
+  waitingOn      Json?
+  startedAt      DateTime @default(now())
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  agentRuns AgentRun[]
+  toolRuns ToolRun[]
+
+  @@index([conversationId, status])
+}
+
+model AgentRun {
+  id                String   @id @default(cuid())
+  runId             String?
+  agentId           String
+  status            AgentRunStatus
+  input             Json
+  output            Json?
+  internalTraceRef  String?
+  startedAt         DateTime @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  run OrchestratorRun? @relation(fields: [runId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id])
+}
+
+model CodeTaskRun {
+  id          String   @id @default(cuid())
+  workspaceId String
+  agentRunId  String?
+  status      CodeTaskRunStatus
+  branchName  String
+  worktreePath String
+  provider    String?
+  providerSessionRef String?
+  diffAssetId String?
+  logAssetId  String?
+  logPath     String?
+  statusMessage String?
+  leaseOwner  String?
+  leaseExpiresAt DateTime?
+  heartbeatAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId, status])
+  @@index([status, leaseExpiresAt])
+}
+
+model RuntimeJob {
+  id              String    @id
+  kind            String
+  status          String
+  targetType      String
+  targetId        String
+  payload         Json
+  attempts        Int       @default(0)
+  maxAttempts     Int       @default(3)
+  availableAt     DateTime  @default(now())
+  leaseOwner      String?
+  leaseExpiresAt  DateTime?
+  heartbeatAt     DateTime?
+  cancelRequested Boolean   @default(false)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  failedAt        DateTime?
+  error           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([kind, targetType, targetId])
+  @@index([status, availableAt])
+  @@index([leaseExpiresAt])
+  @@index([targetType, targetId])
+}
+
+model RuntimeLock {
+  key          String   @id
+  ownerId      String
+  resourceType String
+  resourceId   String
+  expiresAt    DateTime
+  heartbeatAt  DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([resourceType, resourceId])
+  @@index([expiresAt])
+}
+
+model ToolRun {
+  id        String   @id @default(cuid())
+  runId     String?
+  toolId    String
+  callerType ToolCallerType
+  callerId  String
+  status    ToolRunStatus
+  input     Json
+  output    Json?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  run OrchestratorRun? @relation(fields: [runId], references: [id])
+}
+
+model RuntimeEvent {
+  id        String   @id @default(cuid())
+  scopeKind RuntimeScopeKind
+  scopeId   String
+  seq       Int
+  type      String
+  actor     Json
+  payload   Json
+  traceId   String
+  createdAt DateTime @default(now())
+
+  @@unique([scopeKind, scopeId, seq])
+  @@index([scopeKind, scopeId, createdAt])
+}
+
+model RuntimeEventCursor {
+  scopeKind RuntimeScopeKind
+  scopeId   String
+  seq       Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@id([scopeKind, scopeId])
+}
+
+model ConversationMemory {
+  id             String   @id @default(cuid())
+  conversationId String
+  version        Int
+  memory         Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@unique([conversationId, version])
+}
+
+model AgentMemory {
+  id        String   @id @default(cuid())
+  agentId   String
+  ownerUserId String
+  conversationId String?
+  scope     AgentMemoryScope
+  memory    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([agentId, ownerUserId])
+  @@index([agentId, ownerUserId, conversationId])
+}
+
+model MemoryVersion {
+  id        String   @id @default(cuid())
+  targetType String
+  targetId   String
+  version    Int
+  snapshot   Json
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorUserId String?
+  action    String
+  targetType String
+  targetId   String
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [actorUserId], references: [id])
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     SystemLogLevel
+  scope     String
+  message   String
+  payload   Json?
+  traceId   String?
+  createdAt DateTime @default(now())
+}
+
+model LlmCallLog {
+  id        String   @id @default(cuid())
+  provider  String
+  model     String
+  callerType String
+  callerId String
+  promptRef String?
+  responseRef String?
+  tokenUsage Json?
+  latencyMs Int?
+  status    LlmCallStatus
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+model RuntimeConfig {
+  id                      String   @id
+  name                    String   @default("默认配置")
+  isActive                Boolean  @default(false)
+  isChatActive            Boolean  @default(false)
+  isCodeActive            Boolean  @default(false)
+  provider                String
+  baseUrl                 String
+  apiKeySecret            String?
+  apiKeyLast4             String?
+  model                   String
+  reasoningEffort         String
+  wireApi                 String
+  codexModel              String
+  codexReasoningEffort    String
+  openCodeModel           String
+  openCodeReasoningEffort String
+  updatedByUserId         String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([isChatActive])
+  @@index([isCodeActive])
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@agenthub/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --workspace @agenthub/shared run build && tsx watch src/main.ts",
+    "dev:worker": "npm --workspace @agenthub/shared run build && AGENTHUB_RUNTIME_WORKER_MODE=worker tsx watch src/runtime-worker.ts",
+    "build": "tsc -p tsconfig.json && node scripts/fix-prisma-esm-imports.mjs",
+    "start": "node dist/main.js",
+    "start:worker": "AGENTHUB_RUNTIME_WORKER_MODE=worker node dist/runtime-worker.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:bootstrap-admin": "tsx prisma/bootstrap-admin.ts",
+    "skills:import-github": "tsx scripts/import-github-skills.ts"
+  },
+  "dependencies": {
+    "@agenthub/shared": "0.1.0",
+    "@fastify/cors": "^11.1.0",
+    "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/platform-fastify": "^11.1.9",
+    "@opencode-ai/sdk": "^1.15.13",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.1.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.6.2",
+    "mammoth": "^1.10.0",
+    "nanoid": "^5.1.6",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.21.0",
+    "quickjs-emscripten": "^0.32.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "ws": "^8.18.3",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/ws": "^8.18.1",
+    "prisma": "^7.1.0",
+    "tsx": "^4.21.0"
+  }
+}

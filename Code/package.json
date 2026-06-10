@@ -1,0 +1,45 @@
+{
+  "name": "agenthub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "web",
+    "desktop"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:server dev:worker dev:web",
+    "dev:desktop": "npm-run-all --parallel dev:server dev:worker dev:web dev:desktop",
+    "dev:server": "AGENTHUB_RUNTIME_WORKER_MODE=disabled npm --workspace @agenthub/server run dev",
+    "dev:worker": "npm --workspace @agenthub/server run dev:worker",
+    "dev:web": "npm --workspace @agenthub/web run dev",
+    "dev:desktop-app": "npm --workspace @agenthub/desktop run dev",
+    "pack:desktop-dir": "npm --workspace @agenthub/desktop run pack",
+    "pack:desktop-mac": "npm run build:web && npm --workspace @agenthub/desktop run dist:mac",
+    "pack:mobile-android": "cd mobile && ANDROID_HOME=$PWD/.android-sdk ANDROID_SDK_ROOT=$PWD/.android-sdk .gradle-bin/gradle-8.10.2/bin/gradle assembleDebug --no-daemon && mkdir -p output && cp app/build/outputs/apk/debug/app-debug.apk output/agenthub-mobile-android-0.1.0-debug.apk",
+    "build": "npm-run-all build:shared build:server build:web",
+    "build:shared": "npm --workspace @agenthub/shared run build",
+    "build:server": "npm --workspace @agenthub/server run build",
+    "build:web": "npm --workspace @agenthub/web run build",
+    "lint": "npm-run-all lint:shared lint:server lint:web",
+    "lint:shared": "npm --workspace @agenthub/shared run lint",
+    "lint:server": "npm --workspace @agenthub/server run lint",
+    "lint:web": "npm --workspace @agenthub/web run lint",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:push": "npm --workspace @agenthub/server run prisma:push",
+    "db:seed": "npm --workspace @agenthub/server run prisma:seed",
+    "db:setup": "npm run db:up && npm run db:push && npm run db:seed",
+    "prisma:generate": "npm --workspace @agenthub/server run prisma:generate"
+  },
+  "devDependencies": {
+    "@excalidraw/excalidraw": "^0.18.1",
+    "@playwright/test": "^1.60.0",
+    "npm-run-all": "^4.1.5",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "typescript": "^5.9.3"
+  }
+}
