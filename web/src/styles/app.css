@@ -1787,6 +1787,49 @@ button.avatar-mark:active {
   white-space: nowrap;
 }
 
+.web-preview-card {
+  background: #f8fbff;
+}
+
+.web-preview-card.ready {
+  background: #f0fdf4;
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.web-preview-card.failed {
+  background: #fef2f2;
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.web-preview-card.starting {
+  background: #eff6ff;
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.web-preview-card svg {
+  color: var(--primary-dark);
+}
+
+.web-preview-card b {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.2;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.web-preview-card.ready b {
+  color: #16a34a;
+}
+
+.web-preview-card.failed b {
+  color: #dc2626;
+}
+
 .status-card {
   position: relative;
   overflow: hidden;

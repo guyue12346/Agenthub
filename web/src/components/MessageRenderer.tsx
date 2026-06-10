@@ -191,7 +191,7 @@ function blockPlainText(block: MessageBlock) {
   if (block.type === "code") return block.payload.code;
   if (block.type === "file") return `文件：${block.payload.name}`;
   if (block.type === "image") return `图片：${block.payload.alt ?? block.payload.assetId}`;
-  if (block.type === "web_preview") return `网页预览：${block.payload.title} ${block.payload.url}`;
+  if (block.type === "web_preview") return `网页预览：${block.payload.title} ${webPreviewStatusLabel(block.payload.status)} ${block.payload.url}`;
   if (block.type === "diff") return `Diff：${block.payload.title}`;
   if (block.type === "agent_status") {
     return `Agent 状态：${block.payload.title} ${agentStatusLabel(block.payload.status)}${block.payload.summary ? ` ${block.payload.summary}` : ""}`;
@@ -312,13 +312,15 @@ function BlockRenderer({
     return <ImageGallery blocks={[block]} workspaceId={workspaceId} onOpenAsset={onOpenAsset} />;
   }
   if (block.type === "web_preview") {
+    const statusLabel = webPreviewStatusLabel(block.payload.status);
     return (
-      <button className="web-preview-card" type="button" onClick={() => onOpenPreview?.(block.payload.title, block.payload.url)}>
+      <button className={`web-preview-card ${block.payload.status}`} type="button" onClick={() => onOpenPreview?.(block.payload.title, block.payload.url)}>
         <Globe2 size={28} />
         <span>
           <strong>{block.payload.title}</strong>
           <small>{block.payload.url}</small>
         </span>
+        <b>{statusLabel}</b>
       </button>
     );
   }
@@ -363,6 +365,13 @@ function deployStatusLabel(status: Extract<MessageBlock, { type: "deploy_status"
   if (status === "ready") return "已就绪";
   if (status === "failed") return "失败";
   if (status === "cancelled") return "已取消";
+  return status;
+}
+
+function webPreviewStatusLabel(status: Extract<MessageBlock, { type: "web_preview" }>["payload"]["status"]) {
+  if (status === "starting") return "启动中";
+  if (status === "ready") return "已就绪";
+  if (status === "failed") return "失败";
   return status;
 }
 
