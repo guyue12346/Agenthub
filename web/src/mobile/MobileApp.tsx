@@ -415,7 +415,18 @@ function MobileMessageBlock({
     const imageSrc = block.payload.previewUrl ?? block.payload.thumbnailUrl;
     return imageSrc ? <img className="mobile-message-image" src={imageSrc} alt={block.payload.alt ?? "图片"} /> : <div className="mobile-artifact"><Box size={16} /> <span>图片</span></div>;
   }
-  if (block.type === "web_preview") return <div className="mobile-artifact"><Home size={16} /> <span>{block.payload.title}</span></div>;
+  if (block.type === "web_preview") {
+    return (
+      <div className={`mobile-artifact mobile-web-preview-card ${block.payload.status}`}>
+        <Home size={16} />
+        <span>
+          <strong>{block.payload.title}</strong>
+          <small>{block.payload.url}</small>
+        </span>
+        <em>{statusLabel(block.payload.status)}</em>
+      </div>
+    );
+  }
   if (block.type === "diff") {
     return (
       <MobileDiffBlock
@@ -1780,6 +1791,7 @@ function statusLabel(status: string) {
     waiting_review: "待审阅",
     revision_requested: "返工",
     merged: "已合并",
+    starting: "启动中",
     building: "构建中",
     ready: "已就绪"
   };

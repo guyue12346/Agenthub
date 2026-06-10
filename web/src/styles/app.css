@@ -12022,6 +12022,64 @@ body {
   font-size: 10px;
 }
 
+.mobile-web-preview-card {
+  width: min(100%, 292px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  color: #2563eb;
+}
+
+.mobile-web-preview-card.ready {
+  border-color: #bbf7d0;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.mobile-web-preview-card.failed {
+  border-color: #fecaca;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.mobile-web-preview-card.starting {
+  border-color: #bfdbfe;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.mobile-web-preview-card span {
+  display: grid;
+  gap: 1px;
+}
+
+.mobile-web-preview-card strong,
+.mobile-web-preview-card small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-web-preview-card strong {
+  color: #182230;
+  font-size: 12px;
+}
+
+.mobile-web-preview-card small {
+  color: #667085;
+  font-size: 10px;
+}
+
+.mobile-web-preview-card em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: currentColor;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.82);
+}
+
 .mobile-artifact span {
   min-width: 0;
   overflow: hidden;
