@@ -1,10 +1,15 @@
 node_modules/
 dist/
+build/
 coverage/
 output/
 tmp/
 .env
+.env.*
+!.env.example
 .DS_Store
+.agenthub-api.log
+.playwright-cli/
 .android-sdk/
 .downloads/
 .gradle/
@@ -12,8 +17,14 @@ tmp/
 mobile/app/build/
 workspaces/*
 !workspaces/.gitkeep
+Logs/
+Doc/
+.claude/
+.tmp/
+video-editing/
 
 # Historical prototype folders are not part of the formal first-version app.
+demo/
 demo/**/node_modules/
 demo/**/dist/
 demo/**/coverage/
