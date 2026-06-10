@@ -53,14 +53,20 @@ export class DeploymentsService {
     const deploymentId = `deploy-${nanoid(10)}`;
     const previewUrl = `/api/deployments/${encodeURIComponent(deploymentId)}/preview/`;
     const now = new Date();
+    const deploymentTitle = input.title ?? "静态预览部署";
     const statusMessage = await this.createDeploymentMessage(workspace.conversationId, [
       createMarkdownBlock(`block-${nanoid(8)}`, `@deploy 已收到部署请求，开始准备静态预览。`),
       this.createDeployStatusBlock({
         deploymentId,
         status: "queued",
-        title: input.title ?? "静态预览部署",
+        title: deploymentTitle,
         detail: "部署任务已进入队列，正在检查 Code/ 工作区。",
         previewUrl
+      }),
+      this.createDeploymentWebPreviewBlock({
+        title: deploymentTitle,
+        url: previewUrl,
+        status: "starting"
       })
     ], { deploymentId, triggerMessageId: input.triggerMessageId });
     const deployment = await this.prisma.deployment.create({
@@ -386,7 +392,19 @@ export class DeploymentsService {
     if (!deployment?.statusMessageId) return;
     const message = await this.prisma.message.findUnique({ where: { id: deployment.statusMessageId } });
     if (!message) return;
+    const previewStatus = deployStatusToWebPreviewStatus(patch.status);
+    const previewUrl = deployment.previewUrl ?? undefined;
     const blocks = (message.blocks as unknown as MessageBlock[]).map((block) => {
+      if (block.type === "web_preview") {
+        return {
+          ...block,
+          payload: {
+            ...block.payload,
+            ...(previewUrl ? { url: previewUrl } : {}),
+            status: previewStatus
+          }
+        } satisfies MessageBlock;
+      }
       if (block.type !== "deploy_status") return block;
       return {
         ...block,
@@ -431,6 +449,23 @@ export class DeploymentsService {
         title: input.title,
         detail: input.detail,
         previewUrl: input.previewUrl
+      }
+    };
+  }
+
+  private createDeploymentWebPreviewBlock(input: {
+    title: string;
+    url: string;
+    status: "starting" | "ready" | "failed";
+  }): MessageBlock {
+    return {
+      blockId: `block-${nanoid(8)}`,
+      schemaVersion: 1,
+      type: "web_preview",
+      payload: {
+        title: input.title,
+        url: input.url,
+        status: input.status
       }
     };
   }
@@ -627,6 +662,12 @@ function appendBoundedLog(logLines: string[], chunk: string) {
 function trimLog(log: string) {
   if (log.length <= MAX_LOG_BYTES) return log;
   return log.slice(log.length - MAX_LOG_BYTES);
+}
+
+function deployStatusToWebPreviewStatus(status: "queued" | "building" | "ready" | "failed" | "cancelled") {
+  if (status === "ready") return "ready";
+  if (status === "failed" || status === "cancelled") return "failed";
+  return "starting";
 }
 
 function mimeTypeForPath(filePath: string) {
