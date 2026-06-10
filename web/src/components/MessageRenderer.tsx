@@ -1,5 +1,5 @@
 import type { ChatMessage, MessageBlock } from "@agenthub/shared";
-import { CheckCircle2, ChevronDown, Copy, FileText, Globe2, ImageIcon, Pin, Reply, Rocket, ThumbsUp, XCircle } from "lucide-react";
+import { Bot, CheckCircle2, ChevronDown, Clock3, Copy, FileText, Globe2, ImageIcon, LoaderCircle, Pin, Reply, Rocket, ThumbsUp, Wrench, XCircle } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { AvatarMark } from "./AvatarMark";
 import { CodeHighlighter } from "./CodeHighlighter";
@@ -53,7 +53,7 @@ export function MessageRenderer({
   const showToast = useUiStore((state) => state.showToast);
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const plainText = message.blocks.map((block) => (block.type === "markdown" ? block.payload.text : `[${block.type}]`)).join("\n");
+  const plainText = message.blocks.map(blockPlainText).join("\n");
   const renderItems = useMemo(() => groupMessageBlocks(message.blocks), [message.blocks]);
   const hasImageBlocks = renderItems.some((item) => item.kind === "image_group");
   const likeActions = (message.actions ?? []).filter((action) => action.type === "like");
@@ -186,6 +186,22 @@ function pinNoticeText(action: NonNullable<ChatMessage["actions"]>[number]) {
   return `${actorName} Pin 了这条消息`;
 }
 
+function blockPlainText(block: MessageBlock) {
+  if (block.type === "markdown") return block.payload.text;
+  if (block.type === "code") return block.payload.code;
+  if (block.type === "file") return `文件：${block.payload.name}`;
+  if (block.type === "image") return `图片：${block.payload.alt ?? block.payload.assetId}`;
+  if (block.type === "web_preview") return `网页预览：${block.payload.title} ${block.payload.url}`;
+  if (block.type === "diff") return `Diff：${block.payload.title}`;
+  if (block.type === "agent_status") {
+    return `Agent 状态：${block.payload.title} ${agentStatusLabel(block.payload.status)}${block.payload.summary ? ` ${block.payload.summary}` : ""}`;
+  }
+  if (block.type === "deploy_status") {
+    return `部署状态：${block.payload.title} ${deployStatusLabel(block.payload.status)}${block.payload.detail ? ` ${block.payload.detail}` : ""}`;
+  }
+  return "[未知消息块]";
+}
+
 function groupMessageBlocks(blocks: MessageBlock[]): MessageRenderItem[] {
   const items: MessageRenderItem[] = [];
   let imageGroup: ImageBlock[] = [];
@@ -307,7 +323,7 @@ function BlockRenderer({
     );
   }
   if (block.type === "agent_status") {
-    return null;
+    return <AgentStatusBlock block={block} />;
   }
   if (block.type === "diff") {
     return <DiffBlock block={block} message={message} onReviewDecision={onReviewDecision} reviewBusyKey={reviewBusyKey} />;
@@ -348,6 +364,60 @@ function deployStatusLabel(status: Extract<MessageBlock, { type: "deploy_status"
   if (status === "failed") return "失败";
   if (status === "cancelled") return "已取消";
   return status;
+}
+
+function AgentStatusBlock({ block }: { block: Extract<MessageBlock, { type: "agent_status" }> }) {
+  const statusLabel = agentStatusLabel(block.payload.status);
+  const subtypeLabel = agentStatusSubtypeLabel(block.payload.subtype);
+  const progress = typeof block.payload.progress === "number" ? Math.round(block.payload.progress * 100) : undefined;
+  const StatusIcon = agentStatusIcon(block.payload.status, block.payload.subtype);
+  return (
+    <div className={`status-card agent-status-card ${block.payload.status}`}>
+      <StatusIcon className={block.payload.status === "running" ? "spin" : undefined} size={22} />
+      <span>
+        <strong>{block.payload.title}</strong>
+        <small>{block.payload.summary ?? `${subtypeLabel} · ${statusLabel}`}</small>
+      </span>
+      <div className="agent-status-meta">
+        <b>{statusLabel}</b>
+        {progress !== undefined ? <small>{progress}%</small> : null}
+      </div>
+      {progress !== undefined ? <i style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /> : null}
+    </div>
+  );
+}
+
+function agentStatusLabel(status: Extract<MessageBlock, { type: "agent_status" }>["payload"]["status"]) {
+  if (status === "queued") return "排队中";
+  if (status === "running") return "运行中";
+  if (status === "waiting_user") return "等待用户";
+  if (status === "waiting_agent") return "等待 Agent";
+  if (status === "waiting_tool") return "等待工具";
+  if (status === "completed") return "已完成";
+  if (status === "failed") return "失败";
+  if (status === "cancelled") return "已取消";
+  if (status === "waiting_review") return "待审阅";
+  if (status === "revision_requested") return "需修改";
+  if (status === "merged") return "已合并";
+  return status;
+}
+
+function agentStatusSubtypeLabel(subtype: Extract<MessageBlock, { type: "agent_status" }>["payload"]["subtype"]) {
+  if (subtype === "code_task") return "Code Agent";
+  if (subtype === "tool_run") return "工具调用";
+  return "Agent 运行";
+}
+
+function agentStatusIcon(
+  status: Extract<MessageBlock, { type: "agent_status" }>["payload"]["status"],
+  subtype: Extract<MessageBlock, { type: "agent_status" }>["payload"]["subtype"]
+) {
+  if (status === "completed" || status === "merged") return CheckCircle2;
+  if (status === "failed" || status === "cancelled" || status === "revision_requested") return XCircle;
+  if (status === "queued" || status.startsWith("waiting_")) return Clock3;
+  if (status === "running") return LoaderCircle;
+  if (subtype === "tool_run") return Wrench;
+  return Bot;
 }
 
 function ImageGallery({
